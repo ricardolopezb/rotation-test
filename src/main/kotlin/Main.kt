@@ -1,17 +1,57 @@
+import generator.ResidentType
 import generator.RotationCalendarGenerator
 import model.Resident
 import model.ResidentLevel
 import model.Rotation
+import model.RotationCalendar
+import java.io.File
 
 fun main(args: Array<String>) {
     val residents: List<Resident> = generateResidents()
     val rotations: List<Rotation> = generateRotations()
 
     val generator = RotationCalendarGenerator()
-    val calendar = generator.generateCalendar(residents, rotations)
+    val calendar = generator.generateCalendar(
+        residents,
+        rotations,
+        mapOf(ResidentType.SUPERIOR to 9,
+            ResidentType.R1 to 18)
+        ).generateReportToFile("report.txt")
 
 
 }
+
+fun RotationCalendar.generateReportToFile(fileName: String) {
+    val reportMap = mutableMapOf<ResidentLevel, Map<Rotation, List<Resident>>>()
+
+    for (week in weeks) {
+        for ((rotation, residents) in week.rotations) {
+            val level = rotation.year
+            reportMap[level] = reportMap.getOrDefault(level, emptyMap()) + (rotation to residents)
+        }
+    }
+
+    val report = buildString {
+        for (level in ResidentLevel.values()) {
+            val rotations = reportMap[level] ?: continue
+            if (rotations.isNotEmpty()) {
+                append("$level:\n\n")
+                for ((rotation, residents) in rotations) {
+                    append("${rotation.name}:\n")
+                    for (resident in residents) {
+                        append("${resident.name}\n")
+                    }
+                    append("\n")
+                }
+            }
+            append("\n\n")
+        }
+    }
+
+    File(fileName).writeText(report)
+}
+
+
 
 fun generateRotations(): List<Rotation> {
     val list = listOf(
@@ -37,6 +77,10 @@ fun generateRotations(): List<Rotation> {
 }
 
 fun generateResidents(): List<Resident> {
+    // generate 23 residents with R1 level and name like Resident i
+    val r1Residents = (1..23).map { Resident("Resident $it", ResidentLevel.R1) }
+
+
     val r2Residents = listOf(
         Resident("LESLIE", ResidentLevel.R2),
         Resident("RODRI", ResidentLevel.R2),
@@ -69,5 +113,5 @@ fun generateResidents(): List<Resident> {
         Resident("SOFI", ResidentLevel.R4)
     )
 
-    return r2Residents + r3Residents + r4Residents
+    return r1Residents + r2Residents + r3Residents + r4Residents
 }
