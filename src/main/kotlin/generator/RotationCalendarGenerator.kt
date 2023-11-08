@@ -16,14 +16,63 @@ class RotationCalendarGenerator {
         val firstWeek: Week = generateFirstWeek(residents, rotations, residentsToLeaveInCore)
         val weeks: MutableList<Week> = mutableListOf(firstWeek)
 
-//        for (i in 2..52) {
-//            val residentsThatWereInCore = weeks.
+        for (i in 1..51) {
+            // get residents that were in core rotations in the previous week
+            val residentsThatWereInCore = weeks[i - 1].rotations
+                .filter { it.key.coreRotation }
+                .flatMap { it.value }
+                .distinct()
+//            for (resident in residentsThatWereInCore) {
+//                val consecutiveWeeksInCore = weeks
+//                    .takeLastWhile { it.rotations.filter { it.key.coreRotation }.flatMap { it.value }.contains(resident) }
+//                    .size
 //
 //
-//        }
+//            }
+
+            val newMap: MutableMap<Rotation, List<Resident>> = mutableMapOf()
+
+            for ((rotation, residents) in weeks[i-1].rotations) {
+                if(rotation.coreRotation) {
+                    for (resident in residents) {
+                        val consecutiveWeeksInCore = weeks.takeLastWhile { it.rotations.filter { it.key.coreRotation }.flatMap { it.value }.contains(resident) }.size
+                        if(hasNotReachedMaxConsecutiveWeeks(consecutiveWeeksInCore, rotation)) {
+                            newMap[rotation] = newMap.getOrDefault(rotation, listOf()) + resident
+                        }
+                    }
+
+                    // check if the sum of all residents in core rotations is equal to the number of residents that should be in core rotations
+                    if(newMap.filter { it.key.coreRotation }.values.flatten().size == residentsToLeaveInCore[ResidentType.SUPERIOR]!! + residentsToLeaveInCore[ResidentType.R1]!!) {
+                        continue
+                    }
+
+
+
+
+                }
+            }
+
+
+        }
 
         return RotationCalendar(listOf(firstWeek))
     }
+
+    private fun getResidentsThatHaveFinishedNonCoreRotation(weeks: List<Week>): List<Resident> {
+        val residentsThatHaveFinishedNonCoreRotation = mutableListOf<Resident>()
+
+        for ((rotation, residents) in weeks.last().rotations.filter { !it.key.coreRotation }) {
+            for (resident in residents) {
+                val consecutiveWeeksInNonCoreRotation = weeks.takeLastWhile { it.rotations.filter { !it.key.coreRotation }.flatMap { it.value }.contains(resident) }.size
+                if(consecutiveWeeksInNonCoreRotation == rotation.maxConsecutiveDuration) residentsThatHaveFinishedNonCoreRotation.add(resident)
+            }
+        }
+
+        return residentsThatHaveFinishedNonCoreRotation
+    }
+
+    private fun hasNotReachedMaxConsecutiveWeeks(consecutiveWeeksInCore: Int, rotation: Rotation) =
+        consecutiveWeeksInCore < rotation.maxConsecutiveDuration
 
     private fun generateFirstWeek(residents: List<Resident>, rotations: List<Rotation>, residentsToLeaveInCore: Map<ResidentType, Int>): Week {
         val superiorResidentsForCoreRotation = residents
